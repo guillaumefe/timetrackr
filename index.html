@@ -1,34 +1,30 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Time Trackr</title>
+    <title>Time Tracker</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
         }
-
         button {
             margin: 5px;
             padding: 10px;
             font-size: 18px;
         }
-
         #active {
             color: red;
         }
-
         #logs, #counter {
             margin-top: 20px;
         }
-
         canvas {
             margin-top: 30px;
         }
     </style>
 </head>
 <body>
-    <h1>Time Trackr</h1>
+    <h1>Time Tracker</h1>
     <button id="start">Start</button> <span id="active"></span>
     <button id="stop">Stop</button>
     <div id="counter"></div>
@@ -37,7 +33,7 @@
 
     <script>
         document.addEventListener("DOMContentLoaded", function () {
-            let startTime;
+            let startTime = localStorage.getItem('startTime') ? new Date(localStorage.getItem('startTime')) : null;
             let intervalId;
             const startButton = document.getElementById("start");
             const stopButton = document.getElementById("stop");
@@ -62,9 +58,15 @@
                 counterDiv.textContent = `${minutes}m ${seconds}s`;
             }
 
+            if (startTime) {
+                activeSpan.textContent = "Tracking...";
+                intervalId = setInterval(updateCounter, 1000);
+            }
+
             startButton.addEventListener("click", function () {
                 if (startTime) return;
                 startTime = new Date();
+                localStorage.setItem('startTime', startTime.toISOString());
                 activeSpan.textContent = "Tracking...";
                 intervalId = setInterval(updateCounter, 1000);
             });
@@ -72,10 +74,11 @@
             stopButton.addEventListener("click", function () {
                 if (!startTime) return;
                 clearInterval(intervalId);
+                localStorage.removeItem('startTime');
                 activeSpan.textContent = "";
                 const endTime = new Date();
                 const logs = JSON.parse(localStorage.getItem('timeLogs') || '[]');
-                logs.push({start: startTime, end: endTime});
+                logs.push({start: startTime.toISOString(), end: endTime.toISOString()});
                 localStorage.setItem('timeLogs', JSON.stringify(logs));
                 loadLogs();
                 drawChart();
@@ -86,10 +89,8 @@
             function drawChart() {
                 const logs = JSON.parse(localStorage.getItem('timeLogs') || '[]');
                 const ctx = document.getElementById('myChart').getContext('2d');
-
                 const labels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
                 const data = [0, 0, 0, 0, 0];
-
                 logs.forEach(log => {
                     const date = new Date(log.start);
                     const day = date.getDay();
@@ -98,11 +99,9 @@
                         data[day - 1] += duration;
                     }
                 });
-
                 if (window.myLineChart) {
                     window.myLineChart.destroy();
                 }
-
                 window.myLineChart = new Chart(ctx, {
                     type: 'bar',
                     data: {
@@ -114,10 +113,10 @@
                             borderColor: 'rgba(75, 192, 192, 1)',
                             borderWidth: 1
                         }]
-                    },
+                    }
                 });
             }
-
+            
             loadLogs();
             drawChart();
         });
