@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Time Trackr</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        button {
+            margin: 5px;
+            padding: 10px;
+            font-size: 18px;
+        }
+
+        #active {
+            color: red;
+        }
+
+        #logs, #counter {
+            margin-top: 20px;
+        }
+
+        canvas {
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Time Trackr</h1>
+    <button id="start">Start</button> <span id="active"></span>
+    <button id="stop">Stop</button>
+    <div id="counter"></div>
+    <div id="logs"></div>
+    <canvas id="myChart" width="400" height="400"></canvas>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            let startTime;
+            let intervalId;
+            const startButton = document.getElementById("start");
+            const stopButton = document.getElementById("stop");
+            const logsDiv = document.getElementById("logs");
+            const activeSpan = document.getElementById("active");
+            const counterDiv = document.getElementById("counter");
+
+            function loadLogs() {
+                const logs = JSON.parse(localStorage.getItem('timeLogs') || '[]');
+                logsDiv.innerHTML = '';
+                logs.forEach(log => {
+                    logsDiv.innerHTML += `<div>${new Date(log.start).toLocaleString()} - ${new Date(log.end).toLocaleString()}</div>`;
+                });
+            }
+
+            function updateCounter() {
+                if (!startTime) return;
+                const now = new Date();
+                const elapsed = Math.floor((now - startTime) / 1000);
+                const minutes = Math.floor(elapsed / 60);
+                const seconds = elapsed % 60;
+                counterDiv.textContent = `${minutes}m ${seconds}s`;
+            }
+
+            startButton.addEventListener("click", function () {
+                if (startTime) return;
+                startTime = new Date();
+                activeSpan.textContent = "Tracking...";
+                intervalId = setInterval(updateCounter, 1000);
+            });
+
+            stopButton.addEventListener("click", function () {
+                if (!startTime) return;
+                clearInterval(intervalId);
+                activeSpan.textContent = "";
+                const endTime = new Date();
+                const logs = JSON.parse(localStorage.getItem('timeLogs') || '[]');
+                logs.push({start: startTime, end: endTime});
+                localStorage.setItem('timeLogs', JSON.stringify(logs));
+                loadLogs();
+                drawChart();
+                counterDiv.textContent = "";
+                startTime = null;
+            });
+
+            function drawChart() {
+                const logs = JSON.parse(localStorage.getItem('timeLogs') || '[]');
+                const ctx = document.getElementById('myChart').getContext('2d');
+
+                const labels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+                const data = [0, 0, 0, 0, 0];
+
+                logs.forEach(log => {
+                    const date = new Date(log.start);
+                    const day = date.getDay();
+                    if (day >= 1 && day <= 5) {
+                        const duration = (new Date(log.end) - date) / 1000 / 60;
+                        data[day - 1] += duration;
+                    }
+                });
+
+                if (window.myLineChart) {
+                    window.myLineChart.destroy();
+                }
+
+                window.myLineChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Time Spent (minutes)',
+                            data: data,
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                });
+            }
+
+            loadLogs();
+            drawChart();
+        });
+    </script>
+</body>
+</html>
